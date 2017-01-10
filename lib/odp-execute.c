@@ -493,6 +493,7 @@ requires_datapath_assistance(const struct nlattr *a)
     case OVS_ACTION_ATTR_USERSPACE:
     case OVS_ACTION_ATTR_RECIRC:
     case OVS_ACTION_ATTR_CT:
+    case OVS_ACTION_ATTR_QSCON:
         return true;
 
     case OVS_ACTION_ATTR_SET:
@@ -624,6 +625,7 @@ odp_execute_actions(void *dp, struct dp_packet **packets, int cnt, bool steal,
             break;
 
         case OVS_ACTION_ATTR_OUTPUT:
+        case OVS_ACTION_ATTR_QSCON:
         case OVS_ACTION_ATTR_TUNNEL_PUSH:
         case OVS_ACTION_ATTR_TUNNEL_POP:
         case OVS_ACTION_ATTR_USERSPACE:

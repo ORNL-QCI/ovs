@@ -694,6 +694,14 @@ enum ovs_ct_attr {
 
 #define OVS_CT_ATTR_MAX (__OVS_CT_ATTR_MAX - 1)
 
+enum ovs_qscon_attr {
+	OVS_QSCON_ATTR_UNSPEC,
+	OVS_QSCON_ATTR_NOMAL,
+	__OVS_QSCON_ATTR_MAX,
+};
+
+#define OVS_QSCON_ATTR_MAX (__OCS_QSCON_ATTR_MAX - 1)
+
 /**
  * enum ovs_action_attr - Action types.
  *
@@ -744,6 +752,7 @@ enum ovs_ct_attr {
 enum ovs_action_attr {
 	OVS_ACTION_ATTR_UNSPEC,
 	OVS_ACTION_ATTR_OUTPUT,	      /* u32 port number. */
+	OVS_ACTION_ATTR_QSCON,
 	OVS_ACTION_ATTR_USERSPACE,    /* Nested OVS_USERSPACE_ATTR_*. */
 	OVS_ACTION_ATTR_SET,          /* One nested OVS_KEY_ATTR_*. */
 	OVS_ACTION_ATTR_PUSH_VLAN,    /* struct ovs_action_push_vlan. */

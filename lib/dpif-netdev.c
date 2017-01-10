@@ -3656,7 +3656,7 @@ dp_execute_cb(void *aux_, struct dp_packet **packets, int cnt,
             return;
         }
         break;
-
+    
     case OVS_ACTION_ATTR_TUNNEL_PUSH:
         if (*depth < MAX_RECIRC_DEPTH) {
             struct dp_packet *tnl_pkt[NETDEV_MAX_BURST];
@@ -3785,6 +3785,7 @@ dp_execute_cb(void *aux_, struct dp_packet **packets, int cnt,
     case OVS_ACTION_ATTR_HASH:
     case OVS_ACTION_ATTR_UNSPEC:
     case __OVS_ACTION_ATTR_MAX:
+    case OVS_ACTION_ATTR_QSCON:
         OVS_NOT_REACHED();
     }
 

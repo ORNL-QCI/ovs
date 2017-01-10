@@ -300,6 +300,13 @@ enum ofp_raw_action_type {
 
     /* NX1.0+(255): void. */
     NXAST_RAW_DEBUG_RECIRC,
+
+/* ## ------------------------------ ## */
+/* ## ORNL Vendor Extension actions. ## */
+/* ## ------------------------------ ## */
+
+    /* ORNL1.4+(0): struct ornl_action_qscon. */
+    ORNL_RAW_QSCON,
 };
 
 /* OpenFlow actions are always a multiple of 8 bytes in length. */
@@ -413,6 +420,7 @@ ofpact_next_flattened(const struct ofpact *ofpact)
     case OFPACT_CLEAR_ACTIONS:
     case OFPACT_WRITE_METADATA:
     case OFPACT_GOTO_TABLE:
+    case OFPACT_QSCON:
         return ofpact_next(ofpact);
 
     case OFPACT_CT:
@@ -5215,6 +5223,144 @@ format_GOTO_TABLE(const struct ofpact_goto_table *a, struct ds *s)
     ds_put_format(s, "goto_table:%"PRIu8, a->table_id);
 }
 
+/* Action structure for ORNL_QSCON, which decides how to proceed
+ * with traffic based on what the connected quantum switch says. */
+struct ornl_action_qscon {
+    ovs_be16 type;                    /* OFPAT_VENDOR */
+    ovs_be16 len;                     /* Length. */
+    ovs_be32 vendor;                  /* ORNL Vendor ID */
+    ovs_be16 subtype;                 /* Subtype ID */
+    /* body */
+    uint8_t proto_ver;                /* Quantum protocol version. */
+    uint8_t proto_opt;                /* Quantum protocol options. */
+    uint16_t in_port;                 /* Quantum input port. */
+    uint16_t out_port;                /* Quantum output port. */
+    char qs_endp[32];                 /* Quantum switch endpoint. */
+};
+OFP_ASSERT(sizeof(struct ornl_action_qscon) == 48);
+
+/* Helper function to parse ofpact_qscon */
+char *parse_QSCON_delim(char *buf);
+
+char *parse_QSCON_delim(char *buf) {
+    while(*buf != '\0' && *buf != ';') {
+        buf++;
+    }
+    return buf;
+}
+
+static enum ofperr
+decode_ORNL_RAW_QSCON(const struct ornl_action_qscon* sa,
+                      enum ofp_version ofp_version OVS_UNUSED,
+                      struct ofpbuf* out)
+{
+    struct ofpact_qscon *qscon = ofpact_put_QSCON(out);
+    qscon->proto_ver = sa->proto_ver;
+    qscon->proto_opt = sa->proto_opt;
+    qscon->in_port = ntohs(sa->in_port);
+    qscon->out_port = ntohs(sa->out_port);
+    memcpy(qscon->qs_endp, sa->qs_endp, sizeof(sa->qs_endp));
+    
+    return 0;
+}
+
+static void encode_QSCON(const struct ofpact_qscon* qscon,
+                         enum ofp_version ofp_version OVS_UNUSED,
+                         struct ofpbuf* out)
+{
+    struct ornl_action_qscon *qscono = put_ORNL_QSCON(out);
+    qscono->proto_ver = qscon->proto_ver;
+    qscono->proto_opt = qscon->proto_opt;
+    qscono->in_port = htons(qscon->in_port);
+    qscono->out_port = htons(qscon->out_port);
+    memcpy(qscono->qs_endp, qscon->qs_endp, sizeof(qscono->qs_endp));
+}
+
+static char * OVS_WARN_UNUSED_RESULT
+parse_QSCON(const char *arg,
+             struct ofpbuf *ofpacts,
+             enum ofputil_protocol *usable_protocols OVS_UNUSED)
+{
+    struct ofpact_qscon *output = ofpact_put_QSCON(ofpacts);
+    size_t arg_len = strlen(arg);
+    char* _arg = strdup(arg);
+    char* abuf = _arg;
+    char* beg = 0;
+    long int temp = 0;
+    
+    if(_arg[0] != '(' || _arg[arg_len-1] != ')') goto qscon_bad_format;
+    abuf++;
+    
+    /* proto_ver */
+    beg = abuf;
+    abuf = parse_QSCON_delim(abuf); /* jog to null-terminator or delimiter ; */
+    if(*abuf == '\0') goto qscon_bad_format;
+    *abuf = '\0'; /* allows us to parse as string from beg */
+    abuf++; /* start on next non-null-terminator char */
+    temp = strtol(beg, NULL, 10);
+    if(temp < 0 || temp > UINT8_MAX) goto qscon_bad_format;
+    output->proto_ver = temp;
+    
+    /* proto_opt */
+    beg = abuf;
+    abuf = parse_QSCON_delim(abuf); /* jog to null-terminator or delimiter ; */
+    if(*abuf == '\0') goto qscon_bad_format;
+    *abuf = '\0'; /* allows us to parse as string from beg */
+    abuf++; /* start on next non-null-terminator char */
+    temp = strtol(beg, NULL, 10);
+    if(temp < 0 || temp > UINT8_MAX) goto qscon_bad_format;
+    output->proto_opt = temp;
+    
+    /* in_port */
+    beg = abuf;
+    abuf = parse_QSCON_delim(abuf); /* jog to null-terminator or delimiter ; */
+    if(*abuf == '\0') goto qscon_bad_format;
+    *abuf = '\0'; /* allows us to parse as string from beg */
+    abuf++; /* start on next non-null-terminator char */
+    temp = strtol(beg, NULL, 10);
+    if(temp < 0 || temp > UINT16_MAX) goto qscon_bad_format;
+    output->in_port = temp;
+    
+    /* out_port */
+    beg = abuf;
+    abuf = parse_QSCON_delim(abuf); /* jog to null-terminator or delimiter ; */
+    if(*abuf == '\0') goto qscon_bad_format;
+    *abuf = '\0'; /* allows us to parse as string from beg */
+    abuf++; /* start on next non-null-terminator char */
+    temp = strtol(beg, NULL, 10);
+    if(temp < 0 || temp > UINT16_MAX) goto qscon_bad_format;
+    output->out_port = temp;
+    
+    /* qs_endp */
+    beg = abuf;
+    size_t endp_len = strlen(beg)+1; /* include null-terminator */
+    /* move null-terminator forward over ')' */
+    _arg[arg_len-1] = '\0';
+    if(endp_len > sizeof(output->qs_endp)) goto qscon_bad_format;
+    memcpy(output->qs_endp, beg, endp_len);
+    _arg[arg_len-1] = ')';
+    
+    free(_arg);
+    return NULL;
+    
+ qscon_bad_format:
+    free(_arg);
+    return xasprintf("%s: bad format", arg);
+}
+
+static void
+format_QSCON(const struct ofpact_qscon *a,
+             struct ds *s)
+{
+    ds_put_format(s,
+                  "qscon:%"PRIu8";%"PRIu8";%"PRIu16";%"PRIu16";%s",
+                  a->proto_ver,
+                  a->proto_opt,
+                  a->in_port,
+                  a->out_port,
+                  a->qs_endp);
+}
+
 static void
 log_bad_action(const struct ofp_action_header *actions, size_t actions_len,
                const struct ofp_action_header *bad_action, enum ofperr error)
@@ -5391,6 +5537,7 @@ ofpact_is_set_or_move_action(const struct ofpact *a)
     case OFPACT_WRITE_ACTIONS:
     case OFPACT_WRITE_METADATA:
     case OFPACT_DEBUG_RECIRC:
+    case OFPACT_QSCON:
         return false;
     default:
         OVS_NOT_REACHED();
@@ -5453,6 +5600,7 @@ ofpact_is_allowed_in_actions_set(const struct ofpact *a)
     case OFPACT_STACK_POP:
     case OFPACT_STACK_PUSH:
     case OFPACT_DEBUG_RECIRC:
+    case OFPACT_QSCON:
 
     /* The action set may only include actions and thus
      * may not include any instructions */
@@ -5668,6 +5816,7 @@ ovs_instruction_type_from_ofpact_type(enum ofpact_type type)
     case OFPACT_SAMPLE:
     case OFPACT_DEBUG_RECIRC:
     case OFPACT_CT:
+    case OFPACT_QSCON:
     default:
         return OVSINST_OFPIT11_APPLY_ACTIONS;
     }
@@ -6047,6 +6196,14 @@ ofpact_check__(enum ofputil_protocol *usable_protocols, struct ofpact *a,
         return ofpact_check_output_port(ofpact_get_OUTPUT(a)->port,
                                         max_ports);
 
+    case OFPACT_QSCON: {
+        /* TODO: Find a less idiotic way to do this. */
+        if(strcmp("ovs-vswitchd", ovs_get_program_name()) == 0) {
+            ofpact_get_QSCON(a)->con_idx = decode_endp_str(ofpact_get_QSCON(a)->qs_endp);
+        }
+        return 0;
+    }
+    
     case OFPACT_CONTROLLER:
         return 0;
 
@@ -6717,7 +6874,9 @@ ofpact_outputs_to_port(const struct ofpact *ofpact, ofp_port_t port)
         return ofpact_get_ENQUEUE(ofpact)->port == port;
     case OFPACT_CONTROLLER:
         return port == OFPP_CONTROLLER;
-
+    
+    
+    case OFPACT_QSCON: /* TODO */
     case OFPACT_OUTPUT_REG:
     case OFPACT_BUNDLE:
     case OFPACT_SET_VLAN_VID:
@@ -7276,7 +7435,7 @@ ofpact_decode_raw(enum ofp_version ofp_version,
     if (oah->type == htons(OFPAT_VENDOR)) {
         /* Get vendor. */
         hdrs.vendor = ntohl(oah->vendor);
-        if (hdrs.vendor == NX_VENDOR_ID || hdrs.vendor == ONF_VENDOR_ID) {
+        if (hdrs.vendor == NX_VENDOR_ID || hdrs.vendor == ONF_VENDOR_ID || hdrs.vendor == ORNL_VENDOR_ID) {
             /* Get extension subtype. */
             const struct ext_action_header *nah;
 
@@ -7400,7 +7559,8 @@ ofpact_put_raw(struct ofpbuf *buf, enum ofp_version ofp_version,
         break;
 
     case NX_VENDOR_ID:
-    case ONF_VENDOR_ID: {
+    case ONF_VENDOR_ID:
+    case ORNL_VENDOR_ID: {
         struct ext_action_header *nah = (struct ext_action_header *) oah;
         nah->subtype = htons(hdrs->type);
         break;

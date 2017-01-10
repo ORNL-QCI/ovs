@@ -107,6 +107,7 @@ odp_action_len(uint16_t type)
 
     switch ((enum ovs_action_attr) type) {
     case OVS_ACTION_ATTR_OUTPUT: return sizeof(uint32_t);
+    case OVS_ACTION_ATTR_QSCON: return ATTR_LEN_VARIABLE;
     case OVS_ACTION_ATTR_TUNNEL_PUSH: return ATTR_LEN_VARIABLE;
     case OVS_ACTION_ATTR_TUNNEL_POP: return sizeof(uint32_t);
     case OVS_ACTION_ATTR_USERSPACE: return ATTR_LEN_VARIABLE;
@@ -710,6 +711,7 @@ format_odp_action(struct ds *ds, const struct nlattr *a)
         break;
     case OVS_ACTION_ATTR_UNSPEC:
     case __OVS_ACTION_ATTR_MAX:
+    case OVS_ACTION_ATTR_QSCON: /* TODO */
     default:
         format_generic_odp_action(ds, a);
         break;
@@ -2040,7 +2042,7 @@ format_odp_tun_vxlan_opt(const struct nlattr *attr,
         case OVS_VXLAN_EXT_GBP: {
             uint32_t key = nl_attr_get_u32(a);
             ovs_be16 id, id_mask;
-            uint8_t flags, flags_mask;
+            uint8_t flags, flags_mask = 0;
 
             id = htons(key & 0xFFFF);
             flags = (key >> 16) & 0xFF;

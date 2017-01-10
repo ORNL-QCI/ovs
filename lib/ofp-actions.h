@@ -25,6 +25,7 @@
 #include "openflow/openflow.h"
 #include "openflow/nicira-ext.h"
 #include "openvswitch/types.h"
+#include "lib/qs_ornl.h"
 
 /* List of OVS abstracted actions.
  *
@@ -119,7 +120,10 @@
     OFPACT(CLEAR_ACTIONS,   ofpact_null,        ofpact, "clear_actions") \
     OFPACT(WRITE_ACTIONS,   ofpact_nest,        ofpact, "write_actions") \
     OFPACT(WRITE_METADATA,  ofpact_metadata,    ofpact, "write_metadata") \
-    OFPACT(GOTO_TABLE,      ofpact_goto_table,  ofpact, "goto_table")
+    OFPACT(GOTO_TABLE,      ofpact_goto_table,  ofpact, "goto_table")   \
+                                                                        \
+    /* ORNL Vendor Extension Actions. */                                \
+    OFPACT(QSCON,            ofpact_qscon,      ofpact, "qscon")
 
 /* enum ofpact_type, with a member OFPACT_<ENUM> for each action. */
 enum OVS_PACKED_ENUM ofpact_type {
@@ -777,6 +781,21 @@ struct ofpact_mpls_ttl {
 struct ofpact_goto_table {
     struct ofpact ofpact;
     uint8_t table_id;
+};
+
+/** OFPACT_QSCON
+ *
+ * Used in ORNL Vendor Extension to control quantum switches */
+struct ofpact_qscon {
+    struct ofpact ofpact;
+    uint8_t proto_ver;          /* Quantum protocol version. */
+    uint8_t proto_opt;          /* Quantum protocol options. */
+    uint16_t in_port;           /* Quantum input port. */
+    uint16_t out_port;          /* Quantum output port. */
+    char qs_endp[32];           /* Quantum switch endpoint. */
+    
+    /* Only meaningful in the context of the daemon. */
+    uint16_t con_idx;           /* Represents quantum connection object. */
 };
 
 /* OFPACT_GROUP.

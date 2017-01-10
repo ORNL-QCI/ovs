@@ -3809,6 +3809,50 @@ compose_dec_mpls_ttl_action(struct xlate_ctx *ctx)
     return true;
 }
 
+#include "qs_ornl.h"
+
+static void
+xlate_qscon_action(struct xlate_ctx *ctx, struct ofpact_qscon const* const act) {
+    /* Force slow path each time */
+    ctx->xout->slow |= SLOW_ACTION;
+    
+    /* Only execute for packet handling, not re-validation */
+    if(ctx->xin->packet != NULL) {
+        const struct qs_net_msg *msg = get_qs_net_msg(ctx->xin->packet);
+        
+        if(msg == NULL) {
+            VLOG_WARN("Ignoring invalid packet received in qscon action");
+            return;
+        } else if(msg->proto_ver != act->proto_ver) {
+            VLOG_WARN("Ignoring request for protocol version %u while we only support %u",
+                      msg->proto_ver,
+                      act->proto_ver);
+            return;
+        }
+        
+        switch(msg->action) {
+         case QS_NET_ACTION_SYN:
+            /* Verbose version */
+            /*VLOG_DBG("Setting QS for proto_ver=%u,flags=%u,in_port=%u,out_port=%u",
+                      msg->proto_ver,
+                      msg->flags,
+                      act->in_port,
+                      act->out_port);*/
+            
+            // this returns a bool, so do something with it
+            configure_qs(act->con_idx, act->in_port, act->out_port);
+            break;
+            
+         case QS_NET_ACTION_ACT:
+            //VLOG_WARN("CLOSE");
+            break;
+        
+         default:
+            break;
+        }
+    }
+}
+
 static void
 xlate_output_action(struct xlate_ctx *ctx,
                     ofp_port_t port, uint16_t max_len, bool may_packet_in)
@@ -4177,6 +4221,10 @@ recirc_unroll_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
             recirc_put_unroll_xlate(ctx);
             break;
 
+        case OFPACT_QSCON:
+            recirc_put_unroll_xlate(ctx);
+            break;
+
         case OFPACT_RESUBMIT:
             if (ofpact_get_RESUBMIT(a)->table_id == 0xff) {
                 /* This resubmit action is relative to the current table, so we
@@ -4380,6 +4428,10 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         }
 
         switch (a->type) {
+        case OFPACT_QSCON:
+            xlate_qscon_action(ctx, ofpact_get_QSCON(a));
+            break;
+
         case OFPACT_OUTPUT:
             xlate_output_action(ctx, ofpact_get_OUTPUT(a)->port,
                                 ofpact_get_OUTPUT(a)->max_len, true);

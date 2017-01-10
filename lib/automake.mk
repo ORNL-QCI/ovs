@@ -17,7 +17,7 @@ endif
 lib_libopenvswitch_la_LDFLAGS = \
         -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
         -Wl,--version-script=$(top_builddir)/lib/libopenvswitch.sym \
-        $(AM_LDFLAGS)
+        $(AM_LDFLAGS) -lzmq
 
 lib_libopenvswitch_la_SOURCES = \
 	lib/aes128.c \
@@ -285,7 +285,9 @@ lib_libopenvswitch_la_SOURCES = \
 	lib/lldp/lldpd.c \
 	lib/lldp/lldpd.h \
 	lib/lldp/lldpd-structs.c \
-	lib/lldp/lldpd-structs.h
+	lib/lldp/lldpd-structs.h \
+	lib/qs_ornl.c \
+	lib/qs_ornl.h
 
 if WIN32
 lib_libopenvswitch_la_SOURCES += \

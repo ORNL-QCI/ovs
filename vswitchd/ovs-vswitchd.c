@@ -49,6 +49,7 @@
 #include "openvswitch/vlog.h"
 #include "lib/vswitch-idl.h"
 #include "lib/netdev-dpdk.h"
+#include "lib/qs_ornl.h"
 
 VLOG_DEFINE_THIS_MODULE(vswitchd);
 
@@ -69,6 +70,8 @@ main(int argc, char *argv[])
     char *remote;
     bool exiting;
     int retval;
+
+    initialize_qs_ornl();
 
     set_program_name(argv[0]);
     retval = dpdk_init(argc,argv);
@@ -136,6 +139,8 @@ main(int argc, char *argv[])
     bridge_exit();
     unixctl_server_destroy(unixctl);
     service_stop();
+    
+    terminate_qs_ornl();
 
     return 0;
 }

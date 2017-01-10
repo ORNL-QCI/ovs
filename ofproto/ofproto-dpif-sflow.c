@@ -1103,6 +1103,9 @@ dpif_sflow_read_actions(const struct flow *flow,
 	    sflow_actions->out_port = u32_to_odp(nl_attr_get_u32(a));
 	    break;
 
+	case OVS_ACTION_ATTR_QSCON:
+	    break;
+
 	case OVS_ACTION_ATTR_TUNNEL_POP:
 	    /* XXX: Do not handle this for now.  It's not clear
 	     * if we should start with encap_depth == 1 when we
